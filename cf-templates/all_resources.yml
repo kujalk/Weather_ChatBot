@@ -5,8 +5,31 @@ Parameters:
   CognitoDomainPrefix:
     Type: String
     Description: Prefix for Cognito domain
+  
+  OpenAIApiKey:
+    Type: String
+    Description: OpenAI API Key
+    NoEcho: true
+
+  ECRRepositoryName:
+    Type: String
+    Description: Name of the ECR repository
+    Default: openai-tools
+
+  ECRImageTag:
+    Type: String
+    Description: Tag for the ECR image
+    Default: latest
 
 Resources:
+  # Secrets Manager for OpenAI API Key
+  OpenAIApiKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: openai-api-key
+      Description: Secret for OpenAI API Key
+      SecretString: !Ref OpenAIApiKey
+
   # VPC Configuration
   VPC:
     Type: AWS::EC2::VPC
@@ -144,18 +167,19 @@ Resources:
       ClientName: OpenAIToolsClient
       GenerateSecret: false
       CallbackURLs: 
-        - !Sub http://${ApplicationLoadBalancer.DNSName}/callback
+        - !Sub http://${ApplicationLoadBalancer.DNSName}
       AllowedOAuthFlows:
         - code
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:
         - email
         - openid
+        - profile
+      LogoutURLs:
+        - !Sub http://${ApplicationLoadBalancer.DNSName}
       SupportedIdentityProviders:
         - COGNITO
-      ExplicitAuthFlows:
-        - ALLOW_USER_PASSWORD_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
 
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
@@ -169,6 +193,99 @@ Resources:
     Properties:
       ClusterName: OpenAIToolsCluster
 
+  # IAM Roles
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Ref OpenAIApiKeySecret
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: InternetAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Ref OpenAIApiKeySecret
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: !Ref 'AWS::Region'
+
+  # ECS Task Definition
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: openai-tools-task
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '256'
+      Memory: '512'
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: openai-tools-container
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepositoryName}:${ECRImageTag}
+          PortMappings:
+            - ContainerPort: 7860
+              Protocol: tcp
+          Environment:
+            - Name: AWS_DEFAULT_REGION
+              Value: !Ref AWS::Region
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref UserPool
+            - Name: COGNITO_CLIENT_ID
+              Value: !Ref UserPoolClient
+            - Name: COGNITO_REDIRECT_URI
+              Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+            - Name: COGNITO_DOMAIN
+              Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com
+            - Name: APPLICATION_URL
+              Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+            - Name: APP_ENVIRONMENT
+              Value: prod
+          Secrets:
+            - Name: CHATGPT_KEY
+              ValueFrom: !Ref OpenAIApiKeySecret
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  # ECS Service
   ECSService:
     Type: AWS::ECS::Service
     DependsOn: ALBListener
@@ -200,45 +317,17 @@ Resources:
           FromPort: 7860
           ToPort: 7860
           SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
 
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
+  # CloudWatch Logs
+  LogGroup:
+    Type: AWS::Logs::LogGroup
     Properties:
-      Family: openai-tools-task
-      RequiresCompatibilities:
-        - FARGATE
-      NetworkMode: awsvpc
-      Cpu: '256'
-      Memory: '512'
-      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
-      TaskRoleArn: !GetAtt TaskRole.Arn
-      ContainerDefinitions:
-        - Name: openai-tools-container
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/openai-tools:latest
-          PortMappings:
-            - ContainerPort: 7860
-              Protocol: tcp
-          Environment:
-            - Name: AWS_DEFAULT_REGION
-              Value: !Ref AWS::Region
-            - Name: COGNITO_USER_POOL_ID
-              Value: !Ref UserPool
-            - Name: COGNITO_CLIENT_ID
-              Value: !Ref UserPoolClient
-            - Name: COGNITO_REDIRECT_URI
-              Value: !Sub http://${ApplicationLoadBalancer.DNSName}/callback
-            - Name: COGNITO_DOMAIN
-              Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com
-            - Name: APPLICATION_URL
-              Value: !Sub http://${ApplicationLoadBalancer.DNSName}
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: ecs
-
-  # IAM Roles remain the same...
+      LogGroupName: /ecs/openai-tools
+      RetentionInDays: 30
 
 Outputs:
   ApplicationURL:
