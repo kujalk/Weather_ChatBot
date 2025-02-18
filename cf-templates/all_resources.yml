@@ -167,7 +167,7 @@ Resources:
       ClientName: OpenAIToolsClient
       GenerateSecret: false
       CallbackURLs: 
-        - !Sub http://${ApplicationLoadBalancer.DNSName}
+        - !Sub http://${ApplicationLoadBalancer.DNSName}/
       AllowedOAuthFlows:
         - code
       AllowedOAuthFlowsUserPoolClient: true
@@ -176,7 +176,7 @@ Resources:
         - openid
         - profile
       LogoutURLs:
-        - !Sub http://${ApplicationLoadBalancer.DNSName}
+        - !Sub http://${ApplicationLoadBalancer.DNSName}/
       SupportedIdentityProviders:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
@@ -268,11 +268,11 @@ Resources:
             - Name: COGNITO_CLIENT_ID
               Value: !Ref UserPoolClient
             - Name: COGNITO_REDIRECT_URI
-              Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+              Value: !Sub http://${ApplicationLoadBalancer.DNSName}/
             - Name: COGNITO_DOMAIN
               Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com
             - Name: APPLICATION_URL
-              Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+              Value: !Sub http://${ApplicationLoadBalancer.DNSName}/
             - Name: APP_ENVIRONMENT
               Value: prod
           Secrets:
