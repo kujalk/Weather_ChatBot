@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template to create Cognito resources for local development'
+
+Parameters:
+  AppName:
+    Type: String
+    Description: Name of the application (use lowercase only)
+    Default: gradiochat
+    AllowedPattern: "^[a-z0-9-]+$"
+  
+  LocalRedirectURL:
+    Type: String
+    Description: The localhost redirect URL
+    Default: http://localhost:7860/
+  
+  UserEmailAttribute:
+    Type: String
+    Description: Boolean indicating if email should be an alias
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+
+Resources:
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AppName}-UserPool
+      AutoVerifiedAttributes:
+        - email
+      MfaConfiguration: 'OFF'
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: false
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+  
+  # Cognito User Pool Domain
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub ${AppName}-${AWS::AccountId}-domain
+      UserPoolId: !Ref UserPool
+  
+  # Cognito App Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${AppName}-client
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - !Ref LocalRedirectURL
+      LogoutURLs:
+        - !Ref LocalRedirectURL
+      SupportedIdentityProviders:
+        - COGNITO
+      PreventUserExistenceErrors: ENABLED
+
+Outputs:
+  UserPoolId:
+    Description: ID of the Cognito User Pool
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolId
+  
+  UserPoolClientId:
+    Description: ID of the Cognito User Pool Client
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolClientId
+  
+  UserPoolDomain:
+    Description: Domain name for the Cognito User Pool
+    Value: !Sub ${AppName}-${AWS::AccountId}-domain.auth.${AWS::Region}.amazoncognito.com
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolDomain
+  
+  CognitoLoginURL:
+    Description: Login URL for the Cognito User Pool
+    Value: !Sub https://${AppName}-${AWS::AccountId}-domain.auth.${AWS::Region}.amazoncognito.com/login?client_id=${UserPoolClient}&response_type=code&scope=email+openid&redirect_uri=${LocalRedirectURL}
+    Export:
+      Name: !Sub ${AWS::StackName}-CognitoLoginURL

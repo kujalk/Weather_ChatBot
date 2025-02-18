@@ -1,0 +1,4 @@
+venv/*
+virtual/*
+set_env.ps1
+external*
