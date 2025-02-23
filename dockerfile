@@ -1,5 +1,5 @@
 # Dockerfile
-FROM python:3.9.2-slim
+FROM python:3.12.9-slim
 
 WORKDIR /app
 
@@ -10,4 +10,4 @@ COPY src/app.py app.py
 
 EXPOSE 80
 
-CMD ["python", "app.py"]
+CMD ["python", "-u", "app.py"]

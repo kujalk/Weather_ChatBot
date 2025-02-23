@@ -4,13 +4,21 @@ import openai
 import boto3
 import json
 import os
-from aws_lambda_powertools import Logger
 import requests
 from urllib.parse import urlencode, parse_qs, urlparse
 from pycognito import Cognito
 from typing import Optional, Dict, Any
+import sys 
+import logging
 
-logger = Logger()
+
+# Create logger
+logger = logging.getLogger(__name__)
+
+# Configure Gradio specific logger
+gradio_logger = logging.getLogger("gradio")
+gradio_logger.setLevel(logging.INFO)
+gradio_logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # Get configuration from environment variables
 USER_POOL_ID = os.environ['COGNITO_USER_POOL_ID']
@@ -48,14 +56,15 @@ class CognitoAuthenticator:
 def get_secret():
     """Retrieve OpenAI API key from AWS Secrets Manager"""
     if os.getenv("APP_ENVIRONMENT") == "local":
-        print("Local environment")
+        logger.info("Local environment")
         return os.getenv("CHATGPT_KEY")
     
     session = boto3.session.Session()
     client = session.client('secretsmanager')
     try:
         response = client.get_secret_value(SecretId='OpenAIAPIKey')
-        return json.loads(response['SecretString'])['OPENAI_API_KEY']
+        return response['SecretString']
+        #return json.loads(response['SecretString'])['OPENAI_API_KEY']
     except Exception as e:
         logger.error(f"Error retrieving secret: {str(e)}")
         raise
@@ -124,17 +133,17 @@ def get_weather_from_coordinates(latitude, longitude):
 def get_weather(location: str) -> str:
     """Get weather for a location using a weather API"""
     try:
-        print(f"Location to be passed to get_coordinates: {location}")
+        logger.info(f"Location to be passed to get_coordinates: {location}")
         latitude, longitude = get_coordinates(location)
-        print(f"Coordinates for location {location} are {latitude}:{longitude}")
+        logger.info(f"Coordinates for location {location} are {latitude}:{longitude}")
         weather_data = get_weather_from_coordinates(latitude, longitude)
-        print("Current Weather:")
-        print(weather_data.get("current_weather", {}))
+        logger.info("Current Weather:")
+        logger.info(weather_data.get("current_weather", {}))
         
         # return f"The current temperature in {location} is {weather_data.get('current_weather').get('temperature')}°C"
         return f"The current temperature in {location} is {weather_data.get('current_weather')}°C"
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         return "Unable to fetch weather data"
     
         
@@ -306,5 +315,8 @@ def create_interface():
     return demo
 
 if __name__ == "__main__":
+    # Force stdout to flush immediately
+    sys.stdout.reconfigure(line_buffering=True)
+
     demo = create_interface()
     demo.launch(server_name="0.0.0.0", server_port=80)

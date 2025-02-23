@@ -50,11 +50,12 @@ jobs:
           
           # Step 4: Deploy CloudFormation stack with references to the ECR image
           aws cloudformation deploy \
-            --template-file cf_template.yml \
+            --template-file cf_template/all_resources.yml \
             --stack-name OpenAIToolsStack \
             --parameter-overrides \
               CognitoDomainPrefix=openaitools-${{ github.run_id }} \
               OpenAIApiKey=${{ secrets.OPENAI_API_KEY }} \
+              ACMCertificateArn=${{ secrets.ACMCertificateArn }} \
               ECRRepositoryName=$ECR_REPO_NAME \
               ECRImageTag=latest \
             --capabilities CAPABILITY_IAM

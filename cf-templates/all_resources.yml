@@ -20,13 +20,17 @@ Parameters:
     Type: String
     Description: Tag for the ECR image
     Default: latest
-
+    
+  ACMCertificateArn:
+    Type: String
+    Description: ARN of ACM Certificate for HTTPS
+    
 Resources:
   # Secrets Manager for OpenAI API Key
   OpenAIApiKeySecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: openai-api-key
+      Name: OpenAIAPIKey
       Description: Secret for OpenAI API Key
       SecretString: !Ref OpenAIApiKey
 
@@ -123,14 +127,32 @@ Resources:
       SecurityGroups:
         - !Ref ALBSecurityGroup
 
-  ALBListener:
+  HTTPSListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref ALBTargetGroup
       LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref ACMCertificateArn
+
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: HTTP_301
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80 
       Protocol: HTTP
 
   ALBTargetGroup:
@@ -140,7 +162,7 @@ Resources:
       HealthCheckPath: /
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
-      Port: 7860
+      Port: 80
       Protocol: HTTP
       TargetType: ip
       VpcId: !Ref VPC
@@ -167,7 +189,7 @@ Resources:
       ClientName: OpenAIToolsClient
       GenerateSecret: false
       CallbackURLs: 
-        - !Sub http://${ApplicationLoadBalancer.DNSName}/
+        - !Sub https://${ApplicationLoadBalancer.DNSName}/
       AllowedOAuthFlows:
         - code
       AllowedOAuthFlowsUserPoolClient: true
@@ -176,7 +198,7 @@ Resources:
         - openid
         - profile
       LogoutURLs:
-        - !Sub http://${ApplicationLoadBalancer.DNSName}/
+        - !Sub https://${ApplicationLoadBalancer.DNSName}/
       SupportedIdentityProviders:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
@@ -258,7 +280,7 @@ Resources:
         - Name: openai-tools-container
           Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepositoryName}:${ECRImageTag}
           PortMappings:
-            - ContainerPort: 7860
+            - ContainerPort: 80
               Protocol: tcp
           Environment:
             - Name: AWS_DEFAULT_REGION
@@ -268,13 +290,15 @@ Resources:
             - Name: COGNITO_CLIENT_ID
               Value: !Ref UserPoolClient
             - Name: COGNITO_REDIRECT_URI
-              Value: !Sub http://${ApplicationLoadBalancer.DNSName}/
+              Value: !Sub https://${ApplicationLoadBalancer.DNSName}/
             - Name: COGNITO_DOMAIN
               Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com
             - Name: APPLICATION_URL
-              Value: !Sub http://${ApplicationLoadBalancer.DNSName}/
+              Value: !Sub https://${ApplicationLoadBalancer.DNSName}/
             - Name: APP_ENVIRONMENT
               Value: prod
+            - Name: PYTHONUNBUFFERED
+              Value: '1'
           Secrets:
             - Name: CHATGPT_KEY
               ValueFrom: !Ref OpenAIApiKeySecret
@@ -288,7 +312,7 @@ Resources:
   # ECS Service
   ECSService:
     Type: AWS::ECS::Service
-    DependsOn: ALBListener
+    DependsOn: HTTPSListener
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 1
@@ -304,7 +328,7 @@ Resources:
             - !Ref ContainerSecurityGroup
       LoadBalancers:
         - ContainerName: openai-tools-container
-          ContainerPort: 7860
+          ContainerPort: 80
           TargetGroupArn: !Ref ALBTargetGroup
 
   ContainerSecurityGroup:
@@ -314,8 +338,8 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 7860
-          ToPort: 7860
+          FromPort: 80
+          ToPort: 80
           SourceSecurityGroupId: !Ref ALBSecurityGroup
       SecurityGroupEgress:
         - IpProtocol: -1
@@ -332,7 +356,7 @@ Resources:
 Outputs:
   ApplicationURL:
     Description: Application URL
-    Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+    Value: !Sub https://${ApplicationLoadBalancer.DNSName}
   
   UserPoolId:
     Description: Cognito User Pool ID
