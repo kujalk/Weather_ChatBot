@@ -30,7 +30,7 @@ jobs:
         if: ${{ github.event.inputs.action == 'create' }}
         run: |
           # Step 1: Create ECR repository if it doesn't exist
-          ECR_REPO_NAME=openai-tools
+          ECR_REPO_NAME=${{ vars.ECRRepoName }}
           ECR_REPO_URI=$(aws ecr describe-repositories --repository-names $ECR_REPO_NAME --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
           
           if [ -z "$ECR_REPO_URI" ]; then
@@ -67,7 +67,7 @@ jobs:
               OpenAIApiKey=${{ secrets.OPENAI_API_KEY }} \
               OpenAIApiKeyName=openai-apikey-${{ github.run_id }}-$(date +%s) \
               ACMCertificateArn=${{ vars.ACMCertificateArn }} \
-              ECRRepositoryName=$ECR_REPO_NAME \
+              ECRRepositoryName=${{ vars.ECRRepoName }} \
               ECRImageTag=latest \
               AppDomainName=${{ vars.AppDomainName }} \
             --capabilities CAPABILITY_IAM
@@ -76,10 +76,7 @@ jobs:
 
       - name: Destroy resources
         if: ${{ github.event.inputs.action == 'destroy' }}
-        run: |
-          # Get ECR repository name before deleting stack
-          ECR_REPO_NAME=openai-tools
-          
+        run: |    
           # Delete CloudFormation stack
           aws cloudformation delete-stack --stack-name OpenAIToolsStack
           
@@ -87,6 +84,6 @@ jobs:
           aws cloudformation wait stack-delete-complete --stack-name OpenAIToolsStack
           
           # After stack is deleted, delete the ECR repository
-          aws ecr delete-repository --repository-name $ECR_REPO_NAME --force || true
+          aws ecr delete-repository --repository-name ${{ vars.ECRRepoName }} --force || true
           
           echo "All resources have been successfully destroyed!"
