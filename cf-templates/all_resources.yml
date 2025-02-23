@@ -303,6 +303,8 @@ Resources:
               Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com
             - Name: APPLICATION_URL
               Value: !Ref AppDomainName
+            - Name: CHATGPT_KEYNAME
+              Value: !Ref OpenAIApiKeyName
             - Name: APP_ENVIRONMENT
               Value: prod
             - Name: PYTHONUNBUFFERED

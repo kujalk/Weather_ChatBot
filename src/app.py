@@ -62,7 +62,7 @@ def get_secret():
     session = boto3.session.Session()
     client = session.client('secretsmanager')
     try:
-        response = client.get_secret_value(SecretId='OpenAIAPIKey')
+        response = client.get_secret_value(SecretId=os.getenv("CHATGPT_KEYNAME"))
         return response['SecretString']
         #return json.loads(response['SecretString'])['OPENAI_API_KEY']
     except Exception as e:
