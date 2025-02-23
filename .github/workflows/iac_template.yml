@@ -58,7 +58,7 @@ jobs:
               ACMCertificateArn=${{ vars.ACMCertificateArn }} \
               ECRRepositoryName=$ECR_REPO_NAME \
               ECRImageTag=latest \
-              AppDomainName="https://chatweather.run.place/" \
+              AppDomainName=${{ vars.AppDomainName }} \
             --capabilities CAPABILITY_IAM
             
           echo "Deployment completed successfully!"
