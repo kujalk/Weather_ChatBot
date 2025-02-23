@@ -14,7 +14,7 @@ Parameters:
   OpenAIApiKeyName:
     Type: String
     Description: Name of the OpenAI API Key secret in Secrets Manager
-
+    
   ECRRepositoryName:
     Type: String
     Description: Name of the ECR repository
@@ -320,6 +320,7 @@ Resources:
   # ECS Service
   ECSService:
     Type: AWS::ECS::Service
+    DependsOn: HTTPSListener
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 1
