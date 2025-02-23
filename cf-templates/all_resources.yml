@@ -24,6 +24,10 @@ Parameters:
   ACMCertificateArn:
     Type: String
     Description: ARN of ACM Certificate for HTTPS
+
+  AppDomainName:
+    Type: String
+    Description: App Domain Name
     
 Resources:
   # Secrets Manager for OpenAI API Key
@@ -189,7 +193,7 @@ Resources:
       ClientName: OpenAIToolsClient
       GenerateSecret: false
       CallbackURLs: 
-        - !Sub https://${ApplicationLoadBalancer.DNSName}/
+        - !Ref AppDomainName
       AllowedOAuthFlows:
         - code
       AllowedOAuthFlowsUserPoolClient: true
@@ -198,7 +202,7 @@ Resources:
         - openid
         - profile
       LogoutURLs:
-        - !Sub https://${ApplicationLoadBalancer.DNSName}/
+        - !Ref AppDomainName
       SupportedIdentityProviders:
         - COGNITO
       PreventUserExistenceErrors: ENABLED
@@ -290,11 +294,11 @@ Resources:
             - Name: COGNITO_CLIENT_ID
               Value: !Ref UserPoolClient
             - Name: COGNITO_REDIRECT_URI
-              Value: !Sub https://${ApplicationLoadBalancer.DNSName}/
+              Value: !Ref AppDomainName
             - Name: COGNITO_DOMAIN
               Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com
             - Name: APPLICATION_URL
-              Value: !Sub https://${ApplicationLoadBalancer.DNSName}/
+              Value: !Ref AppDomainName
             - Name: APP_ENVIRONMENT
               Value: prod
             - Name: PYTHONUNBUFFERED
