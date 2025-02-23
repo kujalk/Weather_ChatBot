@@ -11,6 +11,10 @@ Parameters:
     Description: OpenAI API Key
     NoEcho: true
 
+  OpenAIApiKeyName:
+    Type: String
+    Description: Name of the OpenAI API Key secret in Secrets Manager
+    
   ECRRepositoryName:
     Type: String
     Description: Name of the ECR repository
@@ -34,7 +38,7 @@ Resources:
   OpenAIApiKeySecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: OpenAIAPIKey
+      Name: !Ref OpenAIApiKeyName
       Description: Secret for OpenAI API Key
       SecretString: !Ref OpenAIApiKey
 

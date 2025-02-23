@@ -55,6 +55,7 @@ jobs:
             --parameter-overrides \
               CognitoDomainPrefix=openaitools-${{ github.run_id }} \
               OpenAIApiKey=${{ secrets.OPENAI_API_KEY }} \
+              OpenAIApiKeyName=openai-apikey-${{ github.run_id }}-$(date +%s) \
               ACMCertificateArn=${{ vars.ACMCertificateArn }} \
               ECRRepositoryName=$ECR_REPO_NAME \
               ECRImageTag=latest \
