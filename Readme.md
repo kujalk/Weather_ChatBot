@@ -101,6 +101,20 @@ python app.py
 | API rate limiting | Implement request queuing mechanism |
 | UI rendering issues | Verify Gradio version compatibility |
 
+## Developer
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Developer-K.%20Janarthanan-brightgreen?style=for-the-badge" alt="Developer"/>
+</div>
+
+## Blog & Resources
+
+<div align="center">
+  <a href="https://wordpress.blog">
+    <img src="https://img.shields.io/badge/Technical%20Blog-WordPress-blue?style=for-the-badge&logo=wordpress" alt="WordPress Blog"/>
+  </a>
+</div>
+
 ## Contributing
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
