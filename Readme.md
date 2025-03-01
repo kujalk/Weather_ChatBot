@@ -1,4 +1,4 @@
-# LLM-Powered Chatbot with AWS & GitHub Actions
+# LLM-Powered Weather Chatbot deployed using AWS services
 
 ![Chatbot Demo](/images/Weather%20ChatBot.gif)
 
@@ -110,7 +110,7 @@ python app.py
 ## Blog & Resources
 
 <div align="center">
-  <a href="https://wordpress.blog">
+  <a href="https://scripting4ever.wordpress.com/2025/03/01/building-an-llm-powered-weather-chatbot-deployed-on-aws/">
     <img src="https://img.shields.io/badge/Technical%20Blog-WordPress-blue?style=for-the-badge&logo=wordpress" alt="WordPress Blog"/>
   </a>
 </div>
