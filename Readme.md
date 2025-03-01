@@ -6,7 +6,7 @@
 This project is an AI-powered chatbot built using **Gradio** and **OpenAI's GPT API**, deployed on **AWS** with **CloudFormation** and automated using **GitHub Actions**. The chatbot integrates LLM functions, external APIs, and secure authentication using **AWS Cognito**.
 
 ## Features
-- 🤖 **LLM Agent Integration**: Executes dynamic function calls using OpenAI's API
+- 🤖 **LLM API Integration**: Executes dynamic function calls using OpenAI's API
 - 🔐 **Secure Authentication**: AWS Cognito ensures user identity verification
 - 🏗️ **Infrastructure as Code (IaC)**: Managed using AWS CloudFormation
 - 🚀 **Automated Deployment**: CI/CD via GitHub Actions
@@ -24,7 +24,7 @@ This project is an AI-powered chatbot built using **Gradio** and **OpenAI's GPT 
 5. **Deployment**: CloudFormation provisions infrastructure, automated by GitHub Actions
 
 ## Deployment Process
-![Deployment Process](https://your-git-deploy-image-url-here.gif)
+![Deployment Process](/images/trigger_deploy.png)
 
 ## Prerequisites
 - **AWS Account** with required permissions
@@ -35,18 +35,38 @@ This project is an AI-powered chatbot built using **Gradio** and **OpenAI's GPT 
 - **Python 3.x** with dependencies (`gradio`, `boto3`, `requests`, etc.)
 
 ## Deployment Steps
+
 ### 1️⃣ Set Up ACM Certificate
 - Register a free domain from `freedomain.one`
 - Issue an SSL certificate using AWS Certificate Manager
+- Validate domain ownership through DNS records
 
 ### 2️⃣ Deploy Infrastructure
 - Push CloudFormation templates to AWS
 - Use GitHub Actions to automate deployment
+- Monitor stack creation in AWS Console
 
-### 3️⃣ Run the Application
-![Application Demo](https://your-app-gif-url-here.gif)
-- Authenticate via Cognito
-- Interact with the chatbot using Gradio UI
+### 3️⃣ Configure GitHub Repository
+Set up repository secrets and variables for secure deployment:
+
+![GitHub Secrets Configuration](/images/git_secret.png)
+*Repository secrets for AWS credentials and API keys*
+
+![GitHub Variables Configuration](/images/git_vars.png)
+*Environment variables for deployment configuration*
+
+### 4️⃣ Run the Application
+After successful deployment, access your chatbot through the provided URL:
+
+![Chatbot Application Interface](/images/app.png)
+*Main chatbot interface with conversation history*
+
+![Cognito Login Window](/images/login.png)
+*Secure authentication via AWS Cognito*
+
+- Authenticate using your Cognito credentials
+- Interact with the chatbot through the intuitive Gradio UI
+- Test various LLM functions and API integrations
 
 ## Installation & Local Setup
 ```sh
@@ -57,31 +77,7 @@ python app.py
 ```
 
 ## GitHub Actions Workflow
-```yaml
-name: Deploy LLM Chatbot
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      
-      - name: Deploy CloudFormation Stack
-        run: aws cloudformation deploy --template-file cloudformation.yml --stack-name LLMChatbot --capabilities CAPABILITY_IAM
-```
+![Workflow](/images/deploy.png)
 
 ## Security Considerations
 - 🔒 **Authentication**: AWS Cognito for user management
